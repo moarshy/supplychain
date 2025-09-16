@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     
     class Config:
-        env_file = ".env"
+        env_file = "../.env"  # Look for .env in project root
         env_file_encoding = "utf-8"
 
 

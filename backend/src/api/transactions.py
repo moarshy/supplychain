@@ -23,7 +23,17 @@ async def create_transaction(
     """Create and process a new transaction."""
     try:
         transaction = service.create_transaction(transaction_data)
-        return TransactionRead.model_validate(transaction.model_dump())
+        return TransactionRead(
+            id=transaction.id,
+            product_id=transaction.product_id,
+            location_id=transaction.location_id,
+            transaction_type=transaction.transaction_type,
+            quantity=transaction.quantity,
+            reference_number=transaction.reference_number,
+            notes=transaction.notes,
+            user_id=transaction.user_id,
+            created_at=transaction.created_at
+        )
     except Exception as e:
         raise handle_service_error(e, "transaction creation")
 
@@ -36,7 +46,19 @@ async def create_bulk_transactions(
     """Create multiple transactions in a single batch."""
     try:
         transactions = service.create_bulk_transactions(transactions_data)
-        return [TransactionRead.model_validate(t.model_dump()) for t in transactions]
+        return [
+            TransactionRead(
+                id=t.id,
+                product_id=t.product_id,
+                location_id=t.location_id,
+                transaction_type=t.transaction_type,
+                quantity=t.quantity,
+                reference_number=t.reference_number,
+                notes=t.notes,
+                user_id=t.user_id,
+                created_at=t.created_at
+            ) for t in transactions
+        ]
     except Exception as e:
         raise handle_service_error(e, "bulk transaction creation")
 
@@ -65,7 +87,19 @@ async def list_transactions(
             start_date=start_date,
             end_date=end_date
         )
-        return [TransactionRead.model_validate(t.model_dump()) for t in transactions]
+        return [
+            TransactionRead(
+                id=t.id,
+                product_id=t.product_id,
+                location_id=t.location_id,
+                transaction_type=t.transaction_type,
+                quantity=t.quantity,
+                reference_number=t.reference_number,
+                notes=t.notes,
+                user_id=t.user_id,
+                created_at=t.created_at
+            ) for t in transactions
+        ]
     except Exception as e:
         raise handle_service_error(e, "transaction listing")
 
@@ -110,7 +144,17 @@ async def process_stock_receipt(
             notes=notes,
             user_id=user_id
         )
-        return TransactionRead.model_validate(transaction.model_dump())
+        return TransactionRead(
+            id=transaction.id,
+            product_id=transaction.product_id,
+            location_id=transaction.location_id,
+            transaction_type=transaction.transaction_type,
+            quantity=transaction.quantity,
+            reference_number=transaction.reference_number,
+            notes=transaction.notes,
+            user_id=transaction.user_id,
+            created_at=transaction.created_at
+        )
     except Exception as e:
         raise handle_service_error(e, "stock receipt processing")
 
@@ -135,7 +179,17 @@ async def process_stock_shipment(
             notes=notes,
             user_id=user_id
         )
-        return TransactionRead.model_validate(transaction.model_dump())
+        return TransactionRead(
+            id=transaction.id,
+            product_id=transaction.product_id,
+            location_id=transaction.location_id,
+            transaction_type=transaction.transaction_type,
+            quantity=transaction.quantity,
+            reference_number=transaction.reference_number,
+            notes=transaction.notes,
+            user_id=transaction.user_id,
+            created_at=transaction.created_at
+        )
     except Exception as e:
         raise handle_service_error(e, "stock shipment processing")
 
@@ -162,7 +216,19 @@ async def process_stock_transfer(
             notes=notes,
             user_id=user_id
         )
-        return [TransactionRead.model_validate(t.model_dump()) for t in transactions]
+        return [
+            TransactionRead(
+                id=t.id,
+                product_id=t.product_id,
+                location_id=t.location_id,
+                transaction_type=t.transaction_type,
+                quantity=t.quantity,
+                reference_number=t.reference_number,
+                notes=t.notes,
+                user_id=t.user_id,
+                created_at=t.created_at
+            ) for t in transactions
+        ]
     except Exception as e:
         raise handle_service_error(e, "stock transfer processing")
 
@@ -185,7 +251,17 @@ async def process_stock_adjustment(
             reason=reason,
             user_id=user_id
         )
-        return TransactionRead.model_validate(transaction.model_dump())
+        return TransactionRead(
+            id=transaction.id,
+            product_id=transaction.product_id,
+            location_id=transaction.location_id,
+            transaction_type=transaction.transaction_type,
+            quantity=transaction.quantity,
+            reference_number=transaction.reference_number,
+            notes=transaction.notes,
+            user_id=transaction.user_id,
+            created_at=transaction.created_at
+        )
     except Exception as e:
         raise handle_service_error(e, "stock adjustment processing")
 
@@ -200,7 +276,17 @@ async def get_transaction(
         transaction = service.get_transaction(transaction_id)
         if not transaction:
             raise HTTPException(status_code=404, detail=f"Transaction with ID {transaction_id} not found")
-        return TransactionRead.model_validate(transaction.model_dump())
+        return TransactionRead(
+            id=transaction.id,
+            product_id=transaction.product_id,
+            location_id=transaction.location_id,
+            transaction_type=transaction.transaction_type,
+            quantity=transaction.quantity,
+            reference_number=transaction.reference_number,
+            notes=transaction.notes,
+            user_id=transaction.user_id,
+            created_at=transaction.created_at
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -216,7 +302,19 @@ async def get_product_transaction_history(
     """Get transaction history for a specific product."""
     try:
         transactions = service.get_product_transaction_history(product_id, limit)
-        return [TransactionRead.model_validate(t.model_dump()) for t in transactions]
+        return [
+            TransactionRead(
+                id=t.id,
+                product_id=t.product_id,
+                location_id=t.location_id,
+                transaction_type=t.transaction_type,
+                quantity=t.quantity,
+                reference_number=t.reference_number,
+                notes=t.notes,
+                user_id=t.user_id,
+                created_at=t.created_at
+            ) for t in transactions
+        ]
     except Exception as e:
         raise handle_service_error(e, "product transaction history retrieval")
 
@@ -230,6 +328,18 @@ async def get_location_transaction_history(
     """Get transaction history for a specific location."""
     try:
         transactions = service.get_location_transaction_history(location_id, limit)
-        return [TransactionRead.model_validate(t.model_dump()) for t in transactions]
+        return [
+            TransactionRead(
+                id=t.id,
+                product_id=t.product_id,
+                location_id=t.location_id,
+                transaction_type=t.transaction_type,
+                quantity=t.quantity,
+                reference_number=t.reference_number,
+                notes=t.notes,
+                user_id=t.user_id,
+                created_at=t.created_at
+            ) for t in transactions
+        ]
     except Exception as e:
         raise handle_service_error(e, "location transaction history retrieval")

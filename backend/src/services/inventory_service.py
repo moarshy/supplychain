@@ -208,7 +208,9 @@ class InventoryService:
     
     def get_low_stock_products(self) -> List[Product]:
         """Get products with stock below reorder point."""
-        query = """
+        from sqlmodel import text
+        
+        query = text("""
         SELECT p.* FROM products p
         JOIN (
             SELECT product_id, SUM(quantity_on_hand - reserved_quantity) as available
@@ -216,7 +218,7 @@ class InventoryService:
             GROUP BY product_id
         ) i ON p.id = i.product_id
         WHERE i.available <= p.reorder_point AND p.is_active = 1
-        """
+        """)
         result = self.session.exec(query)
         return list(result)
     

@@ -73,6 +73,74 @@ async def get_location_inventory(
         raise handle_service_error(e, "location inventory retrieval")
 
 
+@router.get("/alerts/low-stock", response_model=List[dict], summary="Get low stock alerts")
+async def get_low_stock_alerts(service: InventoryServiceDep = None):
+    """Get products that need reordering."""
+    try:
+        low_stock_products = service.get_low_stock_products()
+        
+        alerts = []
+        for product in low_stock_products:
+            total_available = service.get_total_available_quantity(product.id)
+            inventory_records = service.get_inventory(product_id=product.id)
+            
+            alerts.append({
+                "product_id": product.id,
+                "sku": product.sku,
+                "name": product.name,
+                "category": product.category,
+                "reorder_point": product.reorder_point,
+                "reorder_quantity": product.reorder_quantity,
+                "current_available": total_available,
+                "shortage": max(0, product.reorder_point - total_available),
+                "supplier_id": product.supplier_id,
+                "locations": [
+                    {
+                        "location_id": inv.location_id,
+                        "available": max(0, inv.quantity_on_hand - inv.reserved_quantity)
+                    }
+                    for inv in inventory_records
+                ]
+            })
+        
+        return alerts
+    except Exception as e:
+        raise handle_service_error(e, "low stock alerts retrieval")
+
+
+@router.get("/summary", summary="Get inventory summary")
+async def get_inventory_summary(service: InventoryServiceDep = None):
+    """Get overall inventory summary statistics."""
+    try:
+        all_inventory = service.get_inventory()
+        
+        total_products_with_stock = len(set(inv.product_id for inv in all_inventory if inv.quantity_on_hand > 0))
+        total_quantity = sum(inv.quantity_on_hand for inv in all_inventory)
+        total_reserved = sum(inv.reserved_quantity for inv in all_inventory)
+        total_available = sum(max(0, inv.quantity_on_hand - inv.reserved_quantity) for inv in all_inventory)
+        
+        # Calculate total value (need product costs)
+        total_value = 0
+        for inv in all_inventory:
+            product = service.get_product(inv.product_id)
+            if product and inv.quantity_on_hand > 0:
+                total_value += float(product.unit_cost * inv.quantity_on_hand)
+        
+        low_stock_count = len(service.get_low_stock_products())
+        
+        return {
+            "total_products_with_stock": total_products_with_stock,
+            "total_quantity_on_hand": total_quantity,
+            "total_reserved_quantity": total_reserved,
+            "total_available_quantity": total_available,
+            "total_inventory_value": total_value,
+            "low_stock_products": low_stock_count,
+            "inventory_turnover_ratio": None,  # Would need historical data
+        }
+    except Exception as e:
+        raise handle_service_error(e, "inventory summary retrieval")
+
+
 @router.put("/{product_id}/{location_id}", response_model=dict, summary="Update inventory")
 async def update_inventory(
     inventory_data: InventoryUpdate,
@@ -193,71 +261,3 @@ async def release_reservation(
         raise
     except Exception as e:
         raise handle_service_error(e, "reservation release")
-
-
-@router.get("/alerts/low-stock", response_model=List[dict], summary="Get low stock alerts")
-async def get_low_stock_alerts(service: InventoryServiceDep):
-    """Get products that need reordering."""
-    try:
-        low_stock_products = service.get_low_stock_products()
-        
-        alerts = []
-        for product in low_stock_products:
-            total_available = service.get_total_available_quantity(product.id)
-            inventory_records = service.get_inventory(product_id=product.id)
-            
-            alerts.append({
-                "product_id": product.id,
-                "sku": product.sku,
-                "name": product.name,
-                "category": product.category,
-                "reorder_point": product.reorder_point,
-                "reorder_quantity": product.reorder_quantity,
-                "current_available": total_available,
-                "shortage": max(0, product.reorder_point - total_available),
-                "supplier_id": product.supplier_id,
-                "locations": [
-                    {
-                        "location_id": inv.location_id,
-                        "available": max(0, inv.quantity_on_hand - inv.reserved_quantity)
-                    }
-                    for inv in inventory_records
-                ]
-            })
-        
-        return alerts
-    except Exception as e:
-        raise handle_service_error(e, "low stock alerts retrieval")
-
-
-@router.get("/summary", summary="Get inventory summary")
-async def get_inventory_summary(service: InventoryServiceDep):
-    """Get overall inventory summary statistics."""
-    try:
-        all_inventory = service.get_inventory()
-        
-        total_products_with_stock = len(set(inv.product_id for inv in all_inventory if inv.quantity_on_hand > 0))
-        total_quantity = sum(inv.quantity_on_hand for inv in all_inventory)
-        total_reserved = sum(inv.reserved_quantity for inv in all_inventory)
-        total_available = sum(max(0, inv.quantity_on_hand - inv.reserved_quantity) for inv in all_inventory)
-        
-        # Calculate total value (need product costs)
-        total_value = 0
-        for inv in all_inventory:
-            product = service.get_product(inv.product_id)
-            if product and inv.quantity_on_hand > 0:
-                total_value += float(product.unit_cost * inv.quantity_on_hand)
-        
-        low_stock_count = len(service.get_low_stock_products())
-        
-        return {
-            "total_products_with_stock": total_products_with_stock,
-            "total_quantity_on_hand": total_quantity,
-            "total_reserved_quantity": total_reserved,
-            "total_available_quantity": total_available,
-            "total_inventory_value": total_value,
-            "low_stock_products": low_stock_count,
-            "inventory_turnover_ratio": None,  # Would need historical data
-        }
-    except Exception as e:
-        raise handle_service_error(e, "inventory summary retrieval")

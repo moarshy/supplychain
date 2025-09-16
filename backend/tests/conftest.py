@@ -12,9 +12,9 @@ from src.data.models import Supplier, Location, Product, SupplierCreate, Locatio
 
 
 # Test database engine (in-memory SQLite)
-@pytest.fixture(name="engine")
-def engine_fixture():
-    """Create test database engine."""
+@pytest.fixture(scope="function")
+def engine():
+    """Create fresh test database engine for each test."""
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -24,22 +24,22 @@ def engine_fixture():
     return engine
 
 
-@pytest.fixture(name="session")
-def session_fixture(engine):
-    """Create test database session."""
+@pytest.fixture(scope="function") 
+def session(engine):
+    """Create fresh test database session for each test."""
     with Session(engine) as session:
         yield session
 
 
-@pytest.fixture(name="client")
-def client_fixture(session: Session):
-    """Create test client with database session override."""
+@pytest.fixture(scope="function")
+def client(session: Session):
+    """Create test client with fresh database session."""
     def get_session_override():
         return session
 
     app.dependency_overrides[get_session] = get_session_override
-    client = TestClient(app)
-    yield client
+    with TestClient(app) as client:
+        yield client
     app.dependency_overrides.clear()
 
 

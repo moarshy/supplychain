@@ -216,6 +216,14 @@ class LocationService:
         total_in = sum(t.quantity for t in in_transactions)
         total_out = abs(sum(t.quantity for t in out_transactions))
         
+        # Prepare transaction type summary
+        transaction_types = {}
+        for txn in recent_transactions:
+            txn_type = txn.transaction_type.value
+            if txn_type not in transaction_types:
+                transaction_types[txn_type] = 0
+            transaction_types[txn_type] += 1
+        
         return {
             "location_id": location_id,
             "location_name": location.name,
@@ -225,7 +233,20 @@ class LocationService:
             "out_transactions": len(out_transactions),
             "total_quantity_in": total_in,
             "total_quantity_out": total_out,
-            "net_change": total_in - total_out
+            "net_change": total_in - total_out,
+            "recent_transactions": [
+                {
+                    "id": t.id,
+                    "transaction_type": t.transaction_type.value,
+                    "quantity": t.quantity,
+                    "product_id": t.product_id,
+                    "created_at": t.created_at,
+                    "reference_number": t.reference_number,
+                    "user_id": t.user_id
+                }
+                for t in sorted(recent_transactions, key=lambda x: x.created_at, reverse=True)[:10]
+            ],
+            "transaction_types": transaction_types
         }
     
     def get_location_statistics(self) -> dict:
@@ -255,6 +276,7 @@ class LocationService:
         return {
             "total_locations": total_locations or 0,
             "active_locations": active_locations or 0,
+            "inactive_locations": (total_locations or 0) - (active_locations or 0),
             "warehouse_types": warehouse_types,
             "top_locations_by_inventory": [
                 {

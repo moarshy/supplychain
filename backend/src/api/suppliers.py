@@ -175,7 +175,18 @@ async def get_supplier_performance(
 ):
     """Get detailed performance metrics for a supplier."""
     try:
-        return service.calculate_supplier_performance(supplier_id)
+        supplier = service.get_supplier(supplier_id)
+        if not supplier:
+            raise HTTPException(status_code=404, detail=f"Supplier with ID {supplier_id} not found")
+        
+        performance_metrics = service.calculate_supplier_performance(supplier_id)
+        
+        # Include supplier's current performance rating
+        performance_metrics["performance_rating"] = supplier.performance_rating
+        
+        return performance_metrics
+    except HTTPException:
+        raise
     except Exception as e:
         raise handle_service_error(e, "supplier performance calculation")
 
@@ -183,18 +194,24 @@ async def get_supplier_performance(
 @router.put("/{supplier_id}/performance", summary="Update supplier performance rating")
 async def update_supplier_performance(
     supplier_id: int = Path(..., description="Supplier ID"),
+    new_rating: float = Query(..., ge=0.0, le=5.0, description="New performance rating"),
     service: SupplierServiceDep = None
 ):
-    """Update supplier's performance rating based on calculated metrics."""
+    """Update supplier's performance rating."""
     try:
-        supplier = service.update_supplier_performance_rating(supplier_id)
+        # Update the supplier's performance rating
+        supplier = service.get_supplier(supplier_id)
         if not supplier:
             raise HTTPException(status_code=404, detail=f"Supplier with ID {supplier_id} not found")
+        
+        # Update the rating
+        update_data = SupplierUpdate(performance_rating=new_rating)
+        updated_supplier = service.update_supplier(supplier_id, update_data)
         
         return {
             "message": "Performance rating updated successfully",
             "supplier_id": supplier_id,
-            "new_rating": supplier.performance_rating
+            "new_rating": updated_supplier.performance_rating
         }
     except HTTPException:
         raise

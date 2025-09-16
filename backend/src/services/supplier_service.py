@@ -222,6 +222,13 @@ class SupplierService:
             select(func.avg(Supplier.lead_time_days)).where(Supplier.is_active == True)
         ).first()
         
+        # Average performance rating 
+        avg_performance = self.session.exec(
+            select(func.avg(Supplier.performance_rating))
+            .where(Supplier.is_active == True)
+            .where(Supplier.performance_rating.is_not(None))
+        ).first()
+        
         # Top performing suppliers
         top_suppliers = list(self.session.exec(
             select(Supplier)
@@ -234,7 +241,9 @@ class SupplierService:
         return {
             "total_suppliers": total_suppliers or 0,
             "active_suppliers": active_suppliers or 0,
+            "inactive_suppliers": (total_suppliers or 0) - (active_suppliers or 0),
             "average_lead_time_days": round(avg_lead_time, 1) if avg_lead_time else 0,
+            "average_performance_rating": round(avg_performance, 1) if avg_performance else 0,
             "top_suppliers": [
                 {
                     "id": s.id,

@@ -2,7 +2,7 @@
 Database setup and connection management.
 """
 from sqlmodel import SQLModel, create_engine, Session
-from sqlalchemy import event
+from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
 import sqlite3
 from typing import Generator
@@ -63,7 +63,7 @@ def check_database_health() -> bool:
     """Check if database is accessible."""
     try:
         with Session(engine) as session:
-            session.execute("SELECT 1")
+            session.execute(text("SELECT 1"))
         return True
     except Exception as e:
         logger.error(f"Database health check failed: {e}")

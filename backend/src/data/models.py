@@ -234,6 +234,7 @@ class SupplierCreate(SQLModel):
     lead_time_days: int = 7
     payment_terms: Optional[str] = None
     minimum_order_qty: int = 1
+    performance_rating: Optional[float] = None
 
 
 class SupplierUpdate(SQLModel):
