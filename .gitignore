@@ -1,4 +1,7 @@
-# Development data folder
+# Development data folder - ignore only at repo root
+/data/
+
+# Database files
 *.db
 *.sqlite
 *.sqlite3
