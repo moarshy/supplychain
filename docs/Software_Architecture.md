@@ -36,6 +36,15 @@ ai4supplychain/
 ├── .env.example                # Environment variables template
 ├── .gitignore                  # Git ignore patterns
 ├── docker-compose.yml          # Local development setup
+├── src/
+│   └── config.py               # Single configuration file for backend
+├── data/                       # Runtime data directory (gitignored)
+│   ├── *.db                    # SQLite database files
+│   ├── uploads/                # OCR documents and imports
+│   ├── exports/                # Generated reports and backups
+│   ├── logs/                   # Application logs
+│   └── sample_data/            # Sample CSV files
+├── Makefile                    # Development convenience commands
 │
 ├── backend/                    # Backend API and services
 │   ├── pyproject.toml          # Backend dependencies (UV)
@@ -104,15 +113,16 @@ ai4supplychain/
 │   ├── package.json            # Frontend dependencies (Bun)
 │   ├── bun.lockb               # Bun lock file
 │   ├── tsconfig.json           # TypeScript configuration
-│   ├── vite.config.ts          # Vite configuration (removed)
+│   ├── .gitignore              # Git ignore for frontend
 │   ├── tailwind.config.js      # Tailwind CSS configuration
+│   ├── components.json         # shadcn/ui configuration
 │   │
 │   ├── src/                    # Frontend source code
 │   │   ├── components/         # Reusable React components
-│   │   │   ├── ui/             # Base UI components
-│   │   │   ├── charts/         # Chart components
-│   │   │   ├── tables/         # Table components
-│   │   │   └── forms/          # Form components
+│   │   │   ├── ui/             # shadcn/ui base components
+│   │   │   ├── charts/         # Chart components (using Recharts)
+│   │   │   ├── tables/         # Table components (using TanStack Table)
+│   │   │   └── forms/          # Form components (using React Hook Form)
 │   │   │
 │   │   ├── pages/              # Page components
 │   │   │   ├── Dashboard.tsx   # Main dashboard
@@ -137,30 +147,6 @@ ai4supplychain/
 │       ├── index.html
 │       └── favicon.ico
 │
-│ ┌─────────────────────────────────────────────────────────────────┐
-│ │                      RUNTIME DATA STORAGE                      │
-│ └─────────────────────────────────────────────────────────────────┘
-├── storage/                    # Runtime data storage
-│   ├── README.md               # Storage directory documentation
-│   ├── database/               # Database files
-│   │   └── inventory.db        # SQLite database (created at runtime)
-│   ├── sample_data/            # Sample datasets for development/testing
-│   │   ├── README.md           # Sample data documentation  
-│   │   ├── products.csv        # 10 sample products across categories
-│   │   ├── suppliers.csv       # 5 sample suppliers with business terms
-│   │   ├── locations.csv       # 5 sample locations (warehouse, stores)
-│   │   └── transactions.csv    # 10 sample transactions with history
-│   ├── uploads/                # User uploaded files (temporary)
-│   │   ├── documents/          # OCR documents (PDFs, images)
-│   │   └── imports/            # CSV/Excel files for bulk import
-│   ├── exports/                # Generated reports and exports
-│   │   ├── reports/            # Inventory reports, ABC analysis
-│   │   ├── forecasts/          # Demand forecasts, seasonal analysis
-│   │   └── backups/            # Database backups, migration files
-│   └── logs/                   # Application logs
-│       ├── app.log             # Main application log (created at runtime)
-│       ├── ai_agent.log        # AI agent interactions (created at runtime)
-│       └── api.log             # API request logs (created at runtime)
 │
 ├── docs/                       # Documentation
 │   ├── setup.md                # Detailed setup instructions
@@ -199,7 +185,7 @@ The `storage/` directory implements a **separation of concerns** approach, keepi
 - **Generated Data**: `exports/`, `logs/` - Created by application, archived as needed
 
 #### **Production Considerations:**
-- **Database**: SQLite for development scales to PostgreSQL in production
+- **Database**: SQLite sufficient for most use cases, PostgreSQL available if needed
 - **File Storage**: Local storage can be replaced with cloud storage (S3, Azure Blob)
 - **Logging**: Log rotation and centralized logging (ELK stack) for production monitoring
 - **Backups**: Automated backup strategies for `database/` and critical `exports/`
@@ -211,14 +197,14 @@ The `storage/` directory implements a **separation of concerns** approach, keepi
 Language: Python 3.11+
 Package Manager: UV (ultra-fast Python package installer)
 Database: SQLite (serverless, zero setup)
-ORM: SQLAlchemy 2.0+ (industry standard)
+ORM: SQLModel (Pydantic + SQLAlchemy integration)
 Web Framework: FastAPI (modern, fast, auto-docs)
 UI Framework: Streamlit (pure Python, rapid development)
 
 AI/ML Stack:
   Primary LLM: OpenAI GPT-4o mini (best cost/performance)
   Fallback LLM: Anthropic Claude 3.5 Haiku (reliable alternative)
-  Agent Framework: LangChain (industry standard)
+  Agent Framework: LLM library (flexible choice)
   OCR Processing: Tesseract OCR + Google Vision API / AWS Textract
   ML Libraries: pandas, numpy, scipy, statsmodels
   Visualization: plotly, matplotlib
@@ -244,11 +230,11 @@ Development:
 - **Drop-in replacement**: Compatible with existing Python workflows
 - **Excellent dependency resolution**: Handles complex dependency trees efficiently
 
-**SQLite**: Perfect for MVP
-- Zero configuration required
-- Handles millions of records efficiently
-- ACID compliant for data integrity
-- Easy to backup and migrate to PostgreSQL later
+**SQLite + SQLModel**: Perfect for MVP
+- **SQLite**: Zero configuration, handles millions of records, ACID compliant
+- **SQLModel**: Type-safe models that work with both FastAPI and SQLAlchemy
+- **Automatic validation**: Pydantic integration provides data validation
+- **Easy migration**: SQLModel makes PostgreSQL migration seamless if needed
 
 **FastAPI**: Modern web framework
 - Automatic OpenAPI documentation generation
