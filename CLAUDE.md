@@ -11,13 +11,15 @@ AI4SupplyChain is an AI-powered dynamic inventory and demand planning system des
 This project follows a layered architecture with clear separation between backend and frontend:
 
 **Backend** (`backend/`)
-- **Layer 1: Data Foundation** (`backend/src/data/`) - SQLAlchemy models and database schemas
+- **Layer 1: Data Foundation** (`backend/src/data/`) - SQLModel models and SQLite database
 - **Layer 2: Business Logic** (`backend/src/services/`) - Core business operations, forecasting, optimization
 - **Layer 3: AI Agent** (`backend/src/agent/`) - LLM-powered conversational AI system
 - **Layer 4: API** (`backend/src/api/`) - FastAPI REST endpoints with automatic documentation
 
 **Frontend** (`frontend/`)
 - React with TypeScript for type safety
+- shadcn/ui component library
+- Tailwind CSS for styling
 - Bun for package management
 - Component-based architecture with real-time updates
 
@@ -25,72 +27,64 @@ This project follows a layered architecture with clear separation between backen
 
 - **Backend**: Python 3.11+ with FastAPI
 - **Package Manager**: UV (ultra-fast Python package installer)
-- **Database**: SQLite for MVP (PostgreSQL migration path)
+- **Database**: SQLite with SQLModel ORM
 - **AI/ML**: LLM library + OpenAI GPT-4o mini + Anthropic Claude
-- **Frontend**: Streamlit for rapid prototyping, React planned for future
+- **Frontend**: React + TypeScript + shadcn/ui + Tailwind CSS
 - **OCR**: Tesseract OCR + cloud APIs for document processing
 - **Container**: Docker for deployment
 
 ## Development Commands
 
-### Backend Setup and Development
+### Quick Development Setup
 ```bash
-# Navigate to backend directory
-cd backend
+# Install all dependencies (backend + frontend)
+make install
 
-# Install UV package manager first
+# Run both backend and frontend in development
+make dev
+
+# Or run individually
+make dev-backend    # Backend only (http://localhost:8000)
+make dev-frontend   # Frontend only (http://localhost:3000)
+```
+
+### Backend Development
+```bash
+# Install UV package manager first (one time setup)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install dependencies
-uv sync
+# Backend specific commands
+make install-backend
+make dev-backend
+make test-backend
 
-# Setup development environment
-python scripts/setup_dev.py
-
-# Generate sample data
-python scripts/generate_sample_data.py
-
-# Start FastAPI backend
-uvicorn src.api.main:app --reload
-
-# Run backend tests
-pytest tests/ -v
-
-# Code quality checks
-black src tests
-isort src tests
-flake8 src tests
-mypy src
+# Manual commands if needed
+cd backend && uv sync
+cd backend && uv run uvicorn src.api.main:app --reload
 ```
 
 ### Frontend Development
 ```bash
-# Navigate to frontend directory
-cd frontend
+# Frontend specific commands
+make install-frontend
+make dev-frontend
+make test-frontend
 
-# Install dependencies
-bun install
-
-# Start development server
-bun run dev
-
-# Build for production
-bun run build
-
-# Run tests
-bun test
-
-# Type checking
-bun run type-check
+# Manual commands if needed
+cd frontend && bun install
+cd frontend && bun run dev
+cd frontend && bun run build
 ```
 
-### Full Stack Development
+### Testing and Quality
 ```bash
-# Run with Docker (both backend and frontend)
-docker-compose up --build
+# Run all tests
+make test
 
-# Run all tests (from project root)
-./scripts/test-all.sh
+# Code quality
+make lint
+make format
+make clean
 ```
 
 ## Key Features (MVP)
@@ -106,12 +100,14 @@ docker-compose up --build
 
 ## Data Storage Structure
 
-The `storage/` directory maintains runtime data separate from source code:
-- `database/` - SQLite database files (persistent)
-- `sample_data/` - CSV files with sample products, suppliers, locations, transactions
+The `data/` directory at project root contains all runtime data during development:
+- `*.db`, `*.sqlite` - SQLite database files
 - `uploads/` - Temporary files for OCR and imports
 - `exports/` - Generated reports, forecasts, and backups
 - `logs/` - Application, AI agent, and API logs
+- `sample_data/` - CSV files with sample products, suppliers, locations, transactions
+
+**Note**: The entire `data/` folder is gitignored to prevent committing sensitive data.
 
 ## Development Workflow
 
@@ -130,8 +126,10 @@ The `storage/` directory maintains runtime data separate from source code:
 
 ### Frontend Guidelines
 - Use React with TypeScript for type safety
+- shadcn/ui for consistent, accessible UI components
+- Tailwind CSS for utility-first styling
 - Bun for package management (faster than npm/yarn)
-- Follow component-based architecture
+- Follow component-based architecture with proper separation of concerns
 - Implement real-time updates for inventory data
 
 ## Testing Strategy
@@ -144,7 +142,7 @@ The `storage/` directory maintains runtime data separate from source code:
 
 ## Production Considerations
 
-- SQLite scales to PostgreSQL for production
+- SQLite is sufficient for most use cases, PostgreSQL migration available if needed
 - Local file storage can migrate to cloud storage (S3, Azure Blob)
 - Implement log rotation and centralized logging
 - Automated backup strategies for database and exports
