@@ -1,5 +1,4 @@
 # Development data folder
-data/
 *.db
 *.sqlite
 *.sqlite3
