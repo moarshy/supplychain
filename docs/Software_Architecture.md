@@ -31,88 +31,112 @@ Start MVP phase first, gradually add more features for future phases, keep updat
 
 ```
 ai4supplychain/
-├── pyproject.toml              # UV dependencies and project config
+├── pyproject.toml              # Project metadata and scripts
 ├── README.md                   # Project documentation
 ├── .env.example                # Environment variables template
 ├── .gitignore                  # Git ignore patterns
 ├── docker-compose.yml          # Local development setup
-├── Dockerfile                  # Container configuration
 │
-├── src/                        # Main package
-│   ├── __init__.py
-│   ├── config.py               # Configuration settings
-│   │
-│   │ ┌─────────────────────────────────────────────────────────────┐
-│   │ │                    LAYER 1: DATA FOUNDATION                 │
-│   │ └─────────────────────────────────────────────────────────────┘
-│   ├── data/                   # Data models and schemas
+├── backend/                    # Backend API and services
+│   ├── pyproject.toml          # Backend dependencies (UV)
+│   ├── src/                    # Main backend package
 │   │   ├── __init__.py
-│   │   ├── base.py             # Base model classes
-│   │   ├── inventory.py        # Product, Stock, Transaction, Location models
-│   │   ├── suppliers.py        # Supplier models and relationships
-│   │   ├── forecast.py         # Forecast results and metadata
-│   │   └── database.py         # Database setup and connection
+│   │   ├── config.py           # Configuration settings
+│   │   │
+│   │   │ ┌─────────────────────────────────────────────────────────────┐
+│   │   │ │                    LAYER 1: DATA FOUNDATION                 │
+│   │   │ └─────────────────────────────────────────────────────────────┘
+│   │   ├── data/               # Data models and schemas
+│   │   │   ├── __init__.py
+│   │   │   ├── base.py         # Base model classes
+│   │   │   ├── inventory.py    # Product, Stock, Transaction, Location models
+│   │   │   ├── suppliers.py    # Supplier models and relationships
+│   │   │   ├── forecast.py     # Forecast results and metadata
+│   │   │   └── database.py     # Database setup and connection
+│   │   │
+│   │   │ ┌─────────────────────────────────────────────────────────────┐
+│   │   │ │                   LAYER 2: BUSINESS LOGIC                   │
+│   │   │ └─────────────────────────────────────────────────────────────┘
+│   │   ├── services/           # Core business logic
+│   │   │   ├── __init__.py
+│   │   │   ├── inventory.py    # Inventory CRUD operations
+│   │   │   ├── suppliers.py    # Supplier management and performance tracking
+│   │   │   ├── transactions.py # Transaction processing with OCR integration
+│   │   │   ├── forecasting.py  # Demand prediction algorithms
+│   │   │   ├── optimization.py # EOQ, reorder point calculations
+│   │   │   └── simulation.py   # Test data generation
+│   │   │
+│   │   │ ┌─────────────────────────────────────────────────────────────┐
+│   │   │ │                 LAYER 3: AI AGENT (API-Based)               │
+│   │   │ └─────────────────────────────────────────────────────────────┘
+│   │   ├── agent/              # Conversational AI system
+│   │   │   ├── __init__.py
+│   │   │   ├── llm_client.py   # OpenAI/Anthropic API integration
+│   │   │   ├── tools.py        # Business function tools
+│   │   │   ├── agent.py        # LLM agent orchestration
+│   │   │   └── memory.py       # Conversation memory management
+│   │   │
+│   │   │ ┌─────────────────────────────────────────────────────────────┐
+│   │   │ │                        LAYER 4: API                        │
+│   │   │ └─────────────────────────────────────────────────────────────┘
+│   │   └── api/                # FastAPI REST endpoints
+│   │       ├── __init__.py
+│   │       ├── main.py         # FastAPI app and configuration
+│   │       ├── inventory.py    # Inventory management endpoints
+│   │       ├── suppliers.py    # Supplier management endpoints
+│   │       ├── transactions.py # Transaction processing endpoints
+│   │       ├── forecast.py     # Forecasting endpoints
+│   │       └── chat.py         # Chat/agent endpoints
 │   │
-│   │ ┌─────────────────────────────────────────────────────────────┐
-│   │ │                   LAYER 2: BUSINESS LOGIC                   │
-│   │ └─────────────────────────────────────────────────────────────┘
-│   ├── services/               # Core business logic
+│   ├── tests/                  # Backend test suite
 │   │   ├── __init__.py
-│   │   ├── inventory.py        # Inventory CRUD operations
-│   │   ├── suppliers.py        # Supplier management and performance tracking
-│   │   ├── transactions.py     # Transaction processing with OCR integration
-│   │   ├── forecasting.py      # Demand prediction algorithms
-│   │   ├── optimization.py     # EOQ, reorder point calculations
-│   │   └── simulation.py       # Test data generation
+│   │   ├── conftest.py         # Test configuration and fixtures
+│   │   ├── test_models.py      # Data model tests
+│   │   ├── test_services.py    # Business logic tests
+│   │   ├── test_agent.py       # AI agent tests
+│   │   └── test_api.py         # API endpoint tests
 │   │
-│   │ ┌─────────────────────────────────────────────────────────────┐
-│   │ │                 LAYER 3: AI AGENT (API-Based)               │
-│   │ └─────────────────────────────────────────────────────────────┘
-│   ├── agent/                  # Conversational AI system
-│   │   ├── __init__.py
-│   │   ├── llm_client.py       # OpenAI/Anthropic API integration
-│   │   ├── tools.py            # Business function tools
-│   │   ├── agent.py            # LangChain agent orchestration
-│   │   └── memory.py           # Conversation memory management
-│   │
-│   │ ┌─────────────────────────────────────────────────────────────┐
-│   │ │                  LAYER 4: API & INTERFACE                   │
-│   │ └─────────────────────────────────────────────────────────────┘
-│   ├── api/                    # FastAPI REST endpoints
-│   │   ├── __init__.py
-│   │   ├── main.py             # FastAPI app and configuration
-│   │   ├── inventory.py        # Inventory management endpoints
-│   │   ├── suppliers.py        # Supplier management endpoints
-│   │   ├── transactions.py     # Transaction processing endpoints
-│   │   ├── forecast.py         # Forecasting endpoints
-│   │   └── chat.py             # Chat/agent endpoints
-│   │
-│   └── ui/                     # Streamlit interface
-│       ├── __init__.py
-│       ├── main.py             # Main dashboard entry point
-│       ├── pages/              # Dashboard pages
-│       │   ├── __init__.py
-│       │   ├── products.py     # Product master data management page
-│       │   ├── inventory.py    # Inventory management page
-│       │   ├── suppliers.py    # Supplier management page
-│       │   ├── transactions.py # Transaction processing with OCR page
-│       │   ├── forecasting.py  # Demand forecasting page
-│       │   ├── optimization.py # Optimization tools page
-│       │   └── chat.py         # Chat interface page
-│       └── components/         # Reusable UI components
-│           ├── __init__.py
-│           ├── charts.py       # Chart components
-│           ├── tables.py       # Table components
-│           └── forms.py        # Form components
+│   └── scripts/                # Backend utility scripts
+│       ├── setup_dev.py        # Development environment setup
+│       ├── generate_sample_data.py # Sample data generation
+│       └── run_tests.py        # Test runner with coverage
 │
-├── tests/                      # Comprehensive test suite
-│   ├── __init__.py
-│   ├── conftest.py             # Test configuration and fixtures
-│   ├── test_models.py          # Data model tests
-│   ├── test_services.py        # Business logic tests
-│   ├── test_agent.py           # AI agent tests
-│   ├── test_api.py             # API endpoint tests
-│   └── test_ui.py              # UI component tests
+├── frontend/                   # React frontend
+│   ├── package.json            # Frontend dependencies (Bun)
+│   ├── bun.lockb               # Bun lock file
+│   ├── tsconfig.json           # TypeScript configuration
+│   ├── vite.config.ts          # Vite configuration (removed)
+│   ├── tailwind.config.js      # Tailwind CSS configuration
+│   │
+│   ├── src/                    # Frontend source code
+│   │   ├── components/         # Reusable React components
+│   │   │   ├── ui/             # Base UI components
+│   │   │   ├── charts/         # Chart components
+│   │   │   ├── tables/         # Table components
+│   │   │   └── forms/          # Form components
+│   │   │
+│   │   ├── pages/              # Page components
+│   │   │   ├── Dashboard.tsx   # Main dashboard
+│   │   │   ├── Products.tsx    # Product management
+│   │   │   ├── Inventory.tsx   # Inventory tracking
+│   │   │   ├── Suppliers.tsx   # Supplier management
+│   │   │   ├── Transactions.tsx # Transaction processing
+│   │   │   ├── Forecasting.tsx # Demand forecasting
+│   │   │   └── Chat.tsx        # AI chat interface
+│   │   │
+│   │   ├── hooks/              # Custom React hooks
+│   │   ├── services/           # API integration services
+│   │   ├── types/              # TypeScript type definitions
+│   │   └── utils/              # Utility functions
+│   │
+│   ├── tests/                  # Frontend test suite
+│   │   ├── components/         # Component tests
+│   │   ├── pages/              # Page tests
+│   │   └── utils/              # Utility tests
+│   │
+│   └── public/                 # Static assets
+│       ├── index.html
+│       └── favicon.ico
 │
 │ ┌─────────────────────────────────────────────────────────────────┐
 │ │                      RUNTIME DATA STORAGE                      │
