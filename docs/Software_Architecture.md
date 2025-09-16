@@ -41,7 +41,6 @@ ai4supplychain/
 │   ├── pyproject.toml          # Backend dependencies (UV)
 │   ├── src/                    # Main backend package
 │   │   ├── __init__.py
-│   │   ├── config.py           # Configuration settings
 │   │   │
 │   │   │ ┌─────────────────────────────────────────────────────────────┐
 │   │   │ │                    LAYER 1: DATA FOUNDATION                 │
