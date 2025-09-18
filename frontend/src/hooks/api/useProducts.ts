@@ -1,0 +1,71 @@
+import { useState, useEffect } from 'react';
+import { api, Product, ProductCreate, ProductUpdate } from '../../services/api';
+
+export function useProducts() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await api.products.getAll();
+      setProducts(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch products');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const createProduct = async (product: ProductCreate): Promise<Product | null> => {
+    try {
+      setError(null);
+      const newProduct = await api.products.create(product);
+      setProducts(prev => [...prev, newProduct]);
+      return newProduct;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create product');
+      return null;
+    }
+  };
+
+  const updateProduct = async (id: number, product: ProductUpdate): Promise<Product | null> => {
+    try {
+      setError(null);
+      const updatedProduct = await api.products.update(id, product);
+      setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p));
+      return updatedProduct;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update product');
+      return null;
+    }
+  };
+
+  const deleteProduct = async (id: number): Promise<boolean> => {
+    try {
+      setError(null);
+      await api.products.delete(id);
+      setProducts(prev => prev.filter(p => p.id !== id));
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete product');
+      return false;
+    }
+  };
+
+  return {
+    products,
+    loading,
+    error,
+    refetch: fetchProducts,
+    createProduct,
+    updateProduct,
+    deleteProduct,
+  };
+}
