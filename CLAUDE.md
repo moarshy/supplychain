@@ -72,8 +72,8 @@ make test-frontend
 
 # Manual commands if needed
 cd frontend && bun install
-cd frontend && bun run dev
-cd frontend && bun run build
+cd frontend && bun run dev    # Uses Bun's built-in dev server
+cd frontend && bun run build  # Uses Bun's built-in bundler
 ```
 
 ### Testing and Quality
@@ -131,6 +131,45 @@ The `data/` directory at project root contains all runtime data during developme
 - Bun for package management (faster than npm/yarn)
 - Follow component-based architecture with proper separation of concerns
 - Implement real-time updates for inventory data
+
+### UI Theme Customization with tweakcn
+To customize the application's visual theme during development:
+
+1. **Install tweakcn** (if not already installed):
+   ```bash
+   cd frontend && bun add tweakcn
+   ```
+
+2. **Access tweakcn theme generator**:
+   - Visit https://tweakcn.com or use local tweakcn tools
+   - Import your current shadcn/ui theme configuration
+   - Use the visual editor to customize colors, typography, spacing
+
+3. **Apply theme changes**:
+   ```bash
+   # Generate new theme CSS
+   npx tweakcn generate --config tailwind.config.js --output src/styles/themes.css
+   
+   # Or use the online tool and export the generated CSS
+   # Copy the generated CSS to src/styles/themes.css
+   ```
+
+4. **Theme development workflow**:
+   - Edit colors, fonts, and spacing in tweakcn visual editor
+   - Export generated CSS and Tailwind config
+   - Replace `src/styles/themes.css` with new theme
+   - Update `tailwind.config.js` with new color tokens if needed
+   - Test theme across all components and pages
+
+5. **Theme file structure**:
+   ```
+   frontend/src/styles/
+     globals.css          # Global CSS and Tailwind imports
+     themes.css          # tweakcn generated theme definitions
+     components.css      # Component-specific overrides (if needed)
+   ```
+
+**Note**: Always test theme changes across the entire application to ensure consistency and accessibility.
 
 ## Testing Strategy
 
