@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Button } from '../../components/ui/button';
 import { Plus, Search, Loader2, AlertCircle } from 'lucide-react';
 import { useProducts } from '../../hooks/api/useProducts';
-import { Product } from '../../services/api';
 
 const Products: React.FC = () => {
   const { products, loading, error, refetch } = useProducts();

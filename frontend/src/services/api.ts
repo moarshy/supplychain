@@ -154,7 +154,7 @@ export interface SystemStats {
 export const api = {
   // Products
   products: {
-    getAll: (): Promise<Product[]> => apiRequest('/products'),
+    getAll: (): Promise<Product[]> => apiRequest('/products/'),
     getById: (id: number): Promise<Product> => apiRequest(`/products/${id}`),
     create: (product: ProductCreate): Promise<Product> => 
       apiRequest('/products', {
@@ -174,7 +174,7 @@ export const api = {
 
   // Suppliers
   suppliers: {
-    getAll: (): Promise<Supplier[]> => apiRequest('/suppliers'),
+    getAll: (): Promise<Supplier[]> => apiRequest('/suppliers/'),
     getById: (id: number): Promise<Supplier> => apiRequest(`/suppliers/${id}`),
     create: (supplier: Partial<Supplier>): Promise<Supplier> =>
       apiRequest('/suppliers', {
@@ -194,7 +194,7 @@ export const api = {
 
   // Locations
   locations: {
-    getAll: (): Promise<Location[]> => apiRequest('/locations'),
+    getAll: (): Promise<Location[]> => apiRequest('/locations/'),
     getById: (id: number): Promise<Location> => apiRequest(`/locations/${id}`),
     create: (location: Partial<Location>): Promise<Location> =>
       apiRequest('/locations', {
@@ -214,7 +214,7 @@ export const api = {
 
   // Inventory
   inventory: {
-    getAll: (): Promise<InventoryItem[]> => apiRequest('/inventory'),
+    getAll: (): Promise<InventoryItem[]> => apiRequest('/inventory/'),
     getByLocation: (locationId: number): Promise<InventoryItem[]> =>
       apiRequest(`/inventory/location/${locationId}`),
     update: (productId: number, locationId: number, update: Partial<InventoryItem>): Promise<InventoryItem> =>
@@ -227,7 +227,7 @@ export const api = {
 
   // Transactions
   transactions: {
-    getAll: (): Promise<Transaction[]> => apiRequest('/transactions'),
+    getAll: (): Promise<Transaction[]> => apiRequest('/transactions/'),
     getById: (id: number): Promise<Transaction> => apiRequest(`/transactions/${id}`),
     create: (transaction: Partial<Transaction>): Promise<Transaction> =>
       apiRequest('/transactions', {
@@ -243,7 +243,7 @@ export const api = {
 
   // System
   system: {
-    getStats: (): Promise<SystemStats> => apiRequest('/stats'),
+    getStats: (): Promise<SystemStats> => apiRequest('/stats/'),
     healthCheck: (): Promise<{ status: string; database: string; version: string }> =>
       apiRequest('/health', { baseUrl: 'http://localhost:8000' }),
   },
