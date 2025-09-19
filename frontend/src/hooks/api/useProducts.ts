@@ -52,10 +52,23 @@ export function useProducts() {
     try {
       setError(null);
       await api.products.delete(id);
+      // For soft delete, update the product status instead of removing
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, is_active: false } : p));
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to deactivate product');
+      return false;
+    }
+  };
+
+  const deleteProductPermanently = async (id: number): Promise<boolean> => {
+    try {
+      setError(null);
+      await api.products.deletePermanently(id);
       setProducts(prev => prev.filter(p => p.id !== id));
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete product');
+      setError(err instanceof Error ? err.message : 'Failed to permanently delete product');
       return false;
     }
   };
@@ -68,5 +81,6 @@ export function useProducts() {
     createProduct,
     updateProduct,
     deleteProduct,
+    deleteProductPermanently,
   };
 }

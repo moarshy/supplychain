@@ -1,4 +1,6 @@
 // API client for AI4SupplyChain backend
+import { queuedRequest } from '../utils/requestQueue';
+
 const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 // Error handling utility
@@ -9,32 +11,50 @@ class ApiError extends Error {
   }
 }
 
-// Generic API request function
+// Generic API request function with queue management
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
-  
-  const config: RequestInit = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
-  };
+  return queuedRequest(async () => {
+    const url = `${API_BASE_URL}${endpoint}`;
 
-  try {
-    const response = await fetch(url, config);
-    
-    if (!response.ok) {
-      throw new ApiError(response.status, `HTTP error! status: ${response.status}`);
+    const config: RequestInit = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    };
+
+    try {
+      const response = await fetch(url, config);
+
+      if (!response.ok) {
+        // Try to get error message from response body
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        } catch {
+          // If we can't parse the error body, use the default message
+        }
+
+        // Don't retry certain error codes
+        if (response.status === 404 || response.status === 401 || response.status === 403 || response.status === 400) {
+          throw new ApiError(response.status, errorMessage);
+        }
+        // Retry server errors (5xx) and some client errors
+        throw new ApiError(response.status, errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(0, `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    
-    return await response.json();
-  } catch (error) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
-    throw new ApiError(0, `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
+  }, 2); // Reduce max retries for API calls to 2
 }
 
 // Type definitions matching backend models
@@ -168,6 +188,10 @@ export const api = {
       }),
     delete: (id: number): Promise<void> =>
       apiRequest(`/products/${id}`, {
+        method: 'DELETE',
+      }),
+    deletePermanently: (id: number): Promise<void> =>
+      apiRequest(`/products/${id}/permanent`, {
         method: 'DELETE',
       }),
   },
