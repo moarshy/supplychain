@@ -1,14 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { Plus, Search, Loader2, AlertCircle, MapPin, Warehouse, Building } from 'lucide-react';
+import { Plus, Search, Loader2, AlertCircle, MapPin, Warehouse, Building, Edit, Power, MoreVertical, Trash2 } from 'lucide-react';
 import { useLocations } from '../../hooks/api/useLocations';
 import { useInventory } from '../../hooks/api/useInventory';
+import DeleteConfirmDialog from '../../components/ui/DeleteConfirmDialog';
+import LocationForm from '../../components/forms/LocationForm';
+import type { Location, LocationCreate, LocationUpdate } from '../../services/api';
 
 const Locations: React.FC = () => {
-  const { locations, loading, error, refetch } = useLocations();
+  const { locations, loading, error, refetch, createLocation, updateLocation, deleteLocation, deleteLocationPermanently } = useLocations();
   const { inventory } = useInventory();
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Modal states
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [inactivatingLocation, setInactivatingLocation] = useState<Location | null>(null);
+  const [deletingLocation, setDeletingLocation] = useState<Location | null>(null);
+  const [formLoading, setFormLoading] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setOpenDropdown(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   // Filter locations based on search term
   const filteredLocations = locations.filter(location =>
@@ -28,6 +47,75 @@ const Locations: React.FC = () => {
     };
   };
 
+  // CRUD handlers
+  const handleAddLocation = async (data: LocationCreate) => {
+    setFormLoading(true);
+    try {
+      await createLocation(data);
+      setShowAddForm(false);
+      refetch();
+    } catch (err) {
+      console.error('Failed to add location:', err);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleEditLocation = async (data: LocationUpdate) => {
+    if (!editingLocation) return;
+
+    setFormLoading(true);
+    try {
+      await updateLocation(editingLocation.id, data);
+      setEditingLocation(null);
+      refetch();
+    } catch (err) {
+      console.error('Failed to update location:', err);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleInactivateLocation = async () => {
+    if (!inactivatingLocation) return;
+
+    setFormLoading(true);
+    try {
+      if (inactivatingLocation.is_active) {
+        // Deactivating
+        await deleteLocation(inactivatingLocation.id);
+      } else {
+        // Activating
+        await updateLocation(inactivatingLocation.id, { is_active: true });
+      }
+      setInactivatingLocation(null);
+      refetch();
+    } catch (err) {
+      console.error('Failed to update location status:', err);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleDeleteLocation = async () => {
+    if (!deletingLocation) return;
+
+    setFormLoading(true);
+    setDeleteError(null);
+    try {
+      const success = await deleteLocationPermanently(deletingLocation.id);
+      if (success) {
+        setDeletingLocation(null);
+        refetch();
+      }
+    } catch (err) {
+      console.error('Failed to permanently delete location:', err);
+      setDeleteError(err instanceof Error ? err.message : 'Failed to permanently delete location');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -45,7 +133,7 @@ const Locations: React.FC = () => {
           <h1 className="text-3xl font-bold">Locations</h1>
           <p className="text-muted-foreground">Manage warehouses and storage locations</p>
         </div>
-        <Button>
+        <Button onClick={() => setShowAddForm(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add Location
         </Button>
@@ -139,7 +227,7 @@ const Locations: React.FC = () => {
               {searchTerm ? 'No locations found matching your search.' : 'No locations available.'}
             </div>
             {!searchTerm && (
-              <Button className="mt-4">
+              <Button className="mt-4" onClick={() => setShowAddForm(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add Your First Location
               </Button>
@@ -192,12 +280,58 @@ const Locations: React.FC = () => {
                             </div>
                           </div>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="sm">
-                              Edit
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingLocation(location)}
+                              title="Edit location"
+                            >
+                              <Edit className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm">
-                              View
-                            </Button>
+                            <div className="relative">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDropdown(openDropdown === location.id ? null : location.id);
+                                }}
+                                title="More actions"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                              {openDropdown === location.id && (
+                                <div
+                                  className="absolute right-0 top-8 bg-background border border-border rounded-md shadow-lg z-10 min-w-48"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <div className="py-1">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setInactivatingLocation(location);
+                                        setOpenDropdown(null);
+                                      }}
+                                      className="flex items-center w-full px-3 py-2 text-sm hover:bg-muted"
+                                    >
+                                      <Power className="w-4 h-4 mr-2" />
+                                      {location.is_active ? 'Deactivate' : 'Activate'}
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDeletingLocation(location);
+                                        setOpenDropdown(null);
+                                      }}
+                                      className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Delete Permanently
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </CardHeader>
@@ -242,6 +376,59 @@ const Locations: React.FC = () => {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Add Location Modal */}
+      {showAddForm && (
+        <LocationForm
+          title="Add New Location"
+          onSubmit={handleAddLocation}
+          onCancel={() => setShowAddForm(false)}
+          isLoading={formLoading}
+        />
+      )}
+
+      {/* Edit Location Modal */}
+      {editingLocation && (
+        <LocationForm
+          title="Edit Location"
+          location={editingLocation}
+          onSubmit={handleEditLocation}
+          onCancel={() => setEditingLocation(null)}
+          isLoading={formLoading}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deletingLocation && (
+        <DeleteConfirmDialog
+          isOpen={true}
+          onClose={() => {
+            setDeletingLocation(null);
+            setDeleteError(null);
+          }}
+          onConfirm={handleDeleteLocation}
+          title="Delete Location Permanently"
+          description="Are you sure you want to permanently delete"
+          itemName={deletingLocation.name}
+          isLoading={formLoading}
+          errorMessage={deleteError}
+        />
+      )}
+
+      {/* Inactivate Confirmation Dialog */}
+      {inactivatingLocation && (
+        <DeleteConfirmDialog
+          isOpen={true}
+          onClose={() => setInactivatingLocation(null)}
+          onConfirm={handleInactivateLocation}
+          title={`${inactivatingLocation.is_active ? 'Deactivate' : 'Activate'} Location`}
+          description={`Are you sure you want to ${inactivatingLocation.is_active ? 'deactivate' : 'activate'}`}
+          itemName={inactivatingLocation.name}
+          isLoading={formLoading}
+          confirmText={inactivatingLocation.is_active ? 'Deactivate' : 'Activate'}
+          isDestructive={false}
+        />
       )}
     </div>
   );

@@ -156,6 +156,21 @@ export interface Location {
   updated_at: string;
 }
 
+export interface LocationCreate {
+  name: string;
+  code?: string;
+  address?: string;
+  warehouse_type?: string;
+}
+
+export interface LocationUpdate {
+  name?: string;
+  code?: string;
+  address?: string;
+  warehouse_type?: string;
+  is_active?: boolean;
+}
+
 export interface InventoryItem {
   id: number;
   product_id: number;
@@ -261,6 +276,10 @@ export const api = {
       }),
     delete: (id: number): Promise<void> =>
       apiRequest(`/locations/${id}`, {
+        method: 'DELETE',
+      }),
+    deletePermanently: (id: number): Promise<void> =>
+      apiRequest(`/locations/${id}/permanent`, {
         method: 'DELETE',
       }),
   },

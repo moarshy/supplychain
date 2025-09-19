@@ -176,6 +176,26 @@ async def delete_location(
         raise handle_service_error(e, "location deletion")
 
 
+@router.delete("/{location_id}/permanent", summary="Delete location permanently")
+async def delete_location_permanently(
+    location_id: int = Path(..., description="Location ID"),
+    service: LocationServiceDep = None
+):
+    """Permanently delete location (hard delete). Only allowed if no inventory or transactions exist."""
+    try:
+        success = service.delete_location_permanently(location_id)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Location with ID {location_id} not found")
+        return {"message": "Location permanently deleted", "location_id": location_id}
+    except HTTPException:
+        raise
+    except ValueError as e:
+        # Business rule violation (has inventory/transactions)
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise handle_service_error(e, "permanent location deletion")
+
+
 @router.get("/{location_id}/inventory", summary="Get location inventory summary")
 async def get_location_inventory_summary(
     location_id: int = Path(..., description="Location ID"),
