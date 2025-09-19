@@ -124,6 +124,52 @@ class SupplierService:
         
         logger.info(f"Deactivated supplier: {supplier.name}")
         return True
+
+    def delete_supplier_permanently(self, supplier_id: int) -> bool:
+        """Hard delete supplier (permanently remove from database)."""
+        supplier = self.session.get(Supplier, supplier_id)
+        if not supplier:
+            return False
+
+        # Check if supplier has any products
+        products_count = self.session.exec(
+            select(func.count(Product.id)).where(Product.supplier_id == supplier_id)
+        ).first()
+
+        if products_count > 0:
+            raise ValueError(
+                f"Cannot permanently delete supplier {supplier.name}. "
+                f"It has {products_count} associated products. "
+                "Remove or reassign products first to preserve data integrity."
+            )
+
+        # Check if supplier has any transactions through their products
+        # This is additional safety even though we check products above
+        from .transaction_service import TransactionService
+        transaction_service = TransactionService(self.session)
+
+        # Get all products that were ever associated with this supplier
+        all_supplier_products = self.session.exec(
+            select(Product.id).where(Product.supplier_id == supplier_id)
+        ).all()
+
+        if all_supplier_products:
+            # Check for any transactions involving these products
+            for product_id in all_supplier_products:
+                transactions = transaction_service.list_transactions(product_id=product_id)
+                if transactions:
+                    raise ValueError(
+                        f"Cannot permanently delete supplier {supplier.name}. "
+                        "It has products with existing transaction history. "
+                        "Use deactivate instead to preserve data integrity."
+                    )
+
+        name = supplier.name
+        self.session.delete(supplier)
+        self.session.commit()
+
+        logger.warning(f"Permanently deleted supplier: {name}")
+        return True
     
     def get_supplier_products(self, supplier_id: int) -> List[Product]:
         """Get all products from a supplier."""

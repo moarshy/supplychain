@@ -149,6 +149,26 @@ async def delete_supplier(
         raise handle_service_error(e, "supplier deletion")
 
 
+@router.delete("/{supplier_id}/permanent", summary="Delete supplier permanently")
+async def delete_supplier_permanently(
+    supplier_id: int = Path(..., description="Supplier ID"),
+    service: SupplierServiceDep = None
+):
+    """Permanently delete supplier (hard delete). Only allowed if no products or transactions exist."""
+    try:
+        success = service.delete_supplier_permanently(supplier_id)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Supplier with ID {supplier_id} not found")
+        return {"message": "Supplier permanently deleted", "supplier_id": supplier_id}
+    except HTTPException:
+        raise
+    except ValueError as e:
+        # Business rule violation (has products/transactions)
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise handle_service_error(e, "permanent supplier deletion")
+
+
 @router.get("/{supplier_id}/products", summary="Get supplier products")
 async def get_supplier_products(
     supplier_id: int = Path(..., description="Supplier ID"),

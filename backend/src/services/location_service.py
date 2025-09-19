@@ -146,6 +146,61 @@ class LocationService:
         
         logger.info(f"Deactivated location: {location.name}")
         return True
+
+    def delete_location_permanently(self, location_id: int) -> bool:
+        """Hard delete location (permanently remove from database)."""
+        location = self.session.get(Location, location_id)
+        if not location:
+            return False
+
+        # Check if location has any inventory records (including zero quantities)
+        inventory_count = self.session.exec(
+            select(func.count(Inventory.id)).where(Inventory.location_id == location_id)
+        ).first()
+
+        if inventory_count > 0:
+            # Check if any have non-zero quantities
+            nonzero_inventory_count = self.session.exec(
+                select(func.count(Inventory.id))
+                .where(Inventory.location_id == location_id)
+                .where(Inventory.quantity_on_hand > 0)
+            ).first()
+
+            if nonzero_inventory_count > 0:
+                raise ValueError(
+                    f"Cannot permanently delete location {location.name}. "
+                    f"It has {nonzero_inventory_count} inventory records with stock. "
+                    "Move or adjust inventory first to preserve data integrity."
+                )
+
+        # Check if location has any transactions
+        transaction_count = self.session.exec(
+            select(func.count(Transaction.id)).where(Transaction.location_id == location_id)
+        ).first()
+
+        if transaction_count > 0:
+            raise ValueError(
+                f"Cannot permanently delete location {location.name}. "
+                f"It has {transaction_count} transaction records. "
+                "Use deactivate instead to preserve transaction history."
+            )
+
+        # If there are only empty inventory records (auto-created), delete them first
+        if inventory_count > 0:
+            self.session.exec(
+                select(Inventory).where(Inventory.location_id == location_id)
+            ).all()
+            for inv in self.session.exec(
+                select(Inventory).where(Inventory.location_id == location_id)
+            ).all():
+                self.session.delete(inv)
+
+        name = location.name
+        self.session.delete(location)
+        self.session.commit()
+
+        logger.warning(f"Permanently deleted location: {name}")
+        return True
     
     def get_location_inventory(self, location_id: int) -> List[Inventory]:
         """Get all inventory records for a location."""

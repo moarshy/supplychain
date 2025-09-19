@@ -120,6 +120,31 @@ export interface Supplier {
   updated_at: string;
 }
 
+export interface SupplierCreate {
+  name: string;
+  contact_person?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  lead_time_days?: number;
+  payment_terms?: string;
+  minimum_order_qty?: number;
+  performance_rating?: number;
+}
+
+export interface SupplierUpdate {
+  name?: string;
+  contact_person?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  lead_time_days?: number;
+  payment_terms?: string;
+  minimum_order_qty?: number;
+  is_active?: boolean;
+  performance_rating?: number;
+}
+
 export interface Location {
   id: number;
   name: string;
@@ -214,6 +239,10 @@ export const api = {
       apiRequest(`/suppliers/${id}`, {
         method: 'DELETE',
       }),
+    deletePermanently: (id: number): Promise<void> =>
+      apiRequest(`/suppliers/${id}/permanent`, {
+        method: 'DELETE',
+      }),
   },
 
   // Locations
@@ -269,6 +298,6 @@ export const api = {
   system: {
     getStats: (): Promise<SystemStats> => apiRequest('/stats/'),
     healthCheck: (): Promise<{ status: string; database: string; version: string }> =>
-      apiRequest('/health', { baseUrl: 'http://localhost:8000' }),
+      apiRequest('/health'),
   },
 };

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import type { Supplier } from '../../services/api';
+import type { Supplier, SupplierCreate, SupplierUpdate } from '../../services/api';
 
 export function useSuppliers() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -24,7 +24,7 @@ export function useSuppliers() {
     fetchSuppliers();
   }, []);
 
-  const createSupplier = async (supplier: Partial<Supplier>): Promise<Supplier | null> => {
+  const createSupplier = async (supplier: SupplierCreate): Promise<Supplier | null> => {
     try {
       setError(null);
       const newSupplier = await api.suppliers.create(supplier);
@@ -36,7 +36,7 @@ export function useSuppliers() {
     }
   };
 
-  const updateSupplier = async (id: number, supplier: Partial<Supplier>): Promise<Supplier | null> => {
+  const updateSupplier = async (id: number, supplier: SupplierUpdate): Promise<Supplier | null> => {
     try {
       setError(null);
       const updatedSupplier = await api.suppliers.update(id, supplier);
@@ -52,10 +52,23 @@ export function useSuppliers() {
     try {
       setError(null);
       await api.suppliers.delete(id);
+      // For soft delete, update the supplier status instead of removing
+      setSuppliers(prev => prev.map(s => s.id === id ? { ...s, is_active: false } : s));
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to deactivate supplier');
+      return false;
+    }
+  };
+
+  const deleteSupplierPermanently = async (id: number): Promise<boolean> => {
+    try {
+      setError(null);
+      await api.suppliers.deletePermanently(id);
       setSuppliers(prev => prev.filter(s => s.id !== id));
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete supplier');
+      setError(err instanceof Error ? err.message : 'Failed to permanently delete supplier');
       return false;
     }
   };
@@ -68,5 +81,6 @@ export function useSuppliers() {
     createSupplier,
     updateSupplier,
     deleteSupplier,
+    deleteSupplierPermanently,
   };
 }

@@ -1,12 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { Plus, Search, Loader2, AlertCircle, User, Phone, Mail, MapPin, Star } from 'lucide-react';
+import { Plus, Search, Loader2, AlertCircle, Edit, Power, MoreVertical, Mail, Phone, MapPin, Star, User, Trash2 } from 'lucide-react';
 import { useSuppliers } from '../../hooks/api/useSuppliers';
+import SupplierForm from '../../components/forms/SupplierForm';
+import DeleteConfirmDialog from '../../components/ui/DeleteConfirmDialog';
+import type { Supplier, SupplierCreate, SupplierUpdate } from '../../services/api';
 
 const Suppliers: React.FC = () => {
-  const { suppliers, loading, error, refetch } = useSuppliers();
+  const { suppliers, loading, error, refetch, createSupplier, updateSupplier, deleteSupplier, deleteSupplierPermanently } = useSuppliers();
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Modal states
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [inactivatingSupplier, setInactivatingSupplier] = useState<Supplier | null>(null);
+  const [deletingSupplier, setDeletingSupplier] = useState<Supplier | null>(null);
+  const [formLoading, setFormLoading] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setOpenDropdown(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   // Filter suppliers based on search term
   const filteredSuppliers = suppliers.filter(supplier =>
@@ -14,6 +33,75 @@ const Suppliers: React.FC = () => {
     supplier.contact_person?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     supplier.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // CRUD handlers
+  const handleAddSupplier = async (data: SupplierCreate) => {
+    setFormLoading(true);
+    try {
+      await createSupplier(data);
+      setShowAddForm(false);
+      refetch();
+    } catch (err) {
+      console.error('Failed to add supplier:', err);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleEditSupplier = async (data: SupplierUpdate) => {
+    if (!editingSupplier) return;
+
+    setFormLoading(true);
+    try {
+      await updateSupplier(editingSupplier.id, data);
+      setEditingSupplier(null);
+      refetch();
+    } catch (err) {
+      console.error('Failed to update supplier:', err);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleInactivateSupplier = async () => {
+    if (!inactivatingSupplier) return;
+
+    setFormLoading(true);
+    try {
+      if (inactivatingSupplier.is_active) {
+        // Deactivating
+        await deleteSupplier(inactivatingSupplier.id);
+      } else {
+        // Activating
+        await updateSupplier(inactivatingSupplier.id, { is_active: true });
+      }
+      setInactivatingSupplier(null);
+      refetch();
+    } catch (err) {
+      console.error('Failed to update supplier status:', err);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleDeleteSupplier = async () => {
+    if (!deletingSupplier) return;
+
+    setFormLoading(true);
+    setDeleteError(null);
+    try {
+      const success = await deleteSupplierPermanently(deletingSupplier.id);
+      if (success) {
+        setDeletingSupplier(null);
+        refetch();
+      }
+    } catch (err) {
+      console.error('Failed to permanently delete supplier:', err);
+      setDeleteError(err instanceof Error ? err.message : 'Failed to permanently delete supplier');
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
   const renderRating = (rating?: number) => {
     if (!rating) return <span className="text-muted-foreground">No rating</span>;
@@ -52,7 +140,7 @@ const Suppliers: React.FC = () => {
           <h1 className="text-3xl font-bold">Suppliers</h1>
           <p className="text-muted-foreground">Manage your supplier relationships</p>
         </div>
-        <Button>
+        <Button onClick={() => setShowAddForm(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add Supplier
         </Button>
@@ -168,7 +256,7 @@ const Suppliers: React.FC = () => {
               {searchTerm ? 'No suppliers found matching your search.' : 'No suppliers available.'}
             </div>
             {!searchTerm && (
-              <Button className="mt-4">
+              <Button className="mt-4" onClick={() => setShowAddForm(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add Your First Supplier
               </Button>
@@ -205,12 +293,58 @@ const Suppliers: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm">
-                            Edit
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingSupplier(supplier)}
+                            title="Edit supplier"
+                          >
+                            <Edit className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
-                            View
-                          </Button>
+                          <div className="relative">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdown(openDropdown === supplier.id ? null : supplier.id);
+                              }}
+                              title="More actions"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                            {openDropdown === supplier.id && (
+                              <div
+                                className="absolute right-0 top-8 bg-background border border-border rounded-md shadow-lg z-10 min-w-48"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className="py-1">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setInactivatingSupplier(supplier);
+                                      setOpenDropdown(null);
+                                    }}
+                                    className="flex items-center w-full px-3 py-2 text-sm hover:bg-muted"
+                                  >
+                                    <Power className="w-4 h-4 mr-2" />
+                                    {supplier.is_active ? 'Deactivate' : 'Activate'}
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDeletingSupplier(supplier);
+                                      setOpenDropdown(null);
+                                    }}
+                                    className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete Permanently
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </CardHeader>
@@ -273,6 +407,59 @@ const Suppliers: React.FC = () => {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Add Supplier Modal */}
+      {showAddForm && (
+        <SupplierForm
+          title="Add New Supplier"
+          onSubmit={handleAddSupplier}
+          onCancel={() => setShowAddForm(false)}
+          isLoading={formLoading}
+        />
+      )}
+
+      {/* Edit Supplier Modal */}
+      {editingSupplier && (
+        <SupplierForm
+          title="Edit Supplier"
+          supplier={editingSupplier}
+          onSubmit={handleEditSupplier}
+          onCancel={() => setEditingSupplier(null)}
+          isLoading={formLoading}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deletingSupplier && (
+        <DeleteConfirmDialog
+          isOpen={true}
+          onClose={() => {
+            setDeletingSupplier(null);
+            setDeleteError(null);
+          }}
+          onConfirm={handleDeleteSupplier}
+          title="Delete Supplier Permanently"
+          description="Are you sure you want to permanently delete"
+          itemName={deletingSupplier.name}
+          isLoading={formLoading}
+          errorMessage={deleteError}
+        />
+      )}
+
+      {/* Inactivate Confirmation Dialog */}
+      {inactivatingSupplier && (
+        <DeleteConfirmDialog
+          isOpen={true}
+          onClose={() => setInactivatingSupplier(null)}
+          onConfirm={handleInactivateSupplier}
+          title={`${inactivatingSupplier.is_active ? 'Deactivate' : 'Activate'} Supplier`}
+          description={`Are you sure you want to ${inactivatingSupplier.is_active ? 'deactivate' : 'activate'}`}
+          itemName={inactivatingSupplier.name}
+          isLoading={formLoading}
+          confirmText={inactivatingSupplier.is_active ? 'Deactivate' : 'Activate'}
+          isDestructive={false}
+        />
       )}
     </div>
   );
