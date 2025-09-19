@@ -193,6 +193,52 @@ export interface Transaction {
   created_at: string;
 }
 
+export interface TransactionCreate {
+  product_id: number;
+  location_id: number;
+  transaction_type: 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT';
+  quantity: number;
+  reference_number?: string;
+  notes?: string;
+  user_id?: string;
+}
+
+export interface StockReceiptRequest {
+  product_id: number;
+  location_id: number;
+  quantity: number;
+  reference_number?: string;
+  notes?: string;
+  user_id?: string;
+}
+
+export interface StockShipmentRequest {
+  product_id: number;
+  location_id: number;
+  quantity: number;
+  reference_number?: string;
+  notes?: string;
+  user_id?: string;
+}
+
+export interface StockTransferRequest {
+  product_id: number;
+  from_location_id: number;
+  to_location_id: number;
+  quantity: number;
+  reference_number?: string;
+  notes?: string;
+  user_id?: string;
+}
+
+export interface StockAdjustmentRequest {
+  product_id: number;
+  location_id: number;
+  adjustment_quantity: number;
+  reason: string;
+  user_id?: string;
+}
+
 export interface SystemStats {
   products: {
     total: number;
@@ -301,16 +347,78 @@ export const api = {
   transactions: {
     getAll: (): Promise<Transaction[]> => apiRequest('/transactions/'),
     getById: (id: number): Promise<Transaction> => apiRequest(`/transactions/${id}`),
-    create: (transaction: Partial<Transaction>): Promise<Transaction> =>
+    create: (transaction: TransactionCreate): Promise<Transaction> =>
       apiRequest('/transactions', {
         method: 'POST',
         body: JSON.stringify(transaction),
       }),
-    createBatch: (transactions: Partial<Transaction>[]): Promise<Transaction[]> =>
+    createBatch: (transactions: TransactionCreate[]): Promise<Transaction[]> =>
       apiRequest('/transactions/batch', {
         method: 'POST',
         body: JSON.stringify(transactions),
       }),
+    getSummary: (params?: {
+      product_id?: number;
+      location_id?: number;
+      start_date?: string;
+      end_date?: string;
+    }): Promise<any> => {
+      const searchParams = new URLSearchParams();
+      if (params?.product_id) searchParams.append('product_id', params.product_id.toString());
+      if (params?.location_id) searchParams.append('location_id', params.location_id.toString());
+      if (params?.start_date) searchParams.append('start_date', params.start_date);
+      if (params?.end_date) searchParams.append('end_date', params.end_date);
+      return apiRequest(`/transactions/summary?${searchParams.toString()}`);
+    },
+    // Specialized transaction operations
+    processReceipt: (data: StockReceiptRequest): Promise<Transaction> =>
+      apiRequest(`/transactions/receipt?${new URLSearchParams({
+        product_id: data.product_id.toString(),
+        location_id: data.location_id.toString(),
+        quantity: data.quantity.toString(),
+        ...(data.reference_number && { reference_number: data.reference_number }),
+        ...(data.notes && { notes: data.notes }),
+        ...(data.user_id && { user_id: data.user_id }),
+      }).toString()}`, {
+        method: 'POST',
+      }),
+    processShipment: (data: StockShipmentRequest): Promise<Transaction> =>
+      apiRequest(`/transactions/shipment?${new URLSearchParams({
+        product_id: data.product_id.toString(),
+        location_id: data.location_id.toString(),
+        quantity: data.quantity.toString(),
+        ...(data.reference_number && { reference_number: data.reference_number }),
+        ...(data.notes && { notes: data.notes }),
+        ...(data.user_id && { user_id: data.user_id }),
+      }).toString()}`, {
+        method: 'POST',
+      }),
+    processTransfer: (data: StockTransferRequest): Promise<Transaction[]> =>
+      apiRequest(`/transactions/transfer?${new URLSearchParams({
+        product_id: data.product_id.toString(),
+        from_location_id: data.from_location_id.toString(),
+        to_location_id: data.to_location_id.toString(),
+        quantity: data.quantity.toString(),
+        ...(data.reference_number && { reference_number: data.reference_number }),
+        ...(data.notes && { notes: data.notes }),
+        ...(data.user_id && { user_id: data.user_id }),
+      }).toString()}`, {
+        method: 'POST',
+      }),
+    processAdjustment: (data: StockAdjustmentRequest): Promise<Transaction> =>
+      apiRequest(`/transactions/adjustment?${new URLSearchParams({
+        product_id: data.product_id.toString(),
+        location_id: data.location_id.toString(),
+        adjustment_quantity: data.adjustment_quantity.toString(),
+        reason: data.reason,
+        ...(data.user_id && { user_id: data.user_id }),
+      }).toString()}`, {
+        method: 'POST',
+      }),
+    getProductHistory: (productId: number, limit: number = 100): Promise<Transaction[]> =>
+      apiRequest(`/transactions/product/${productId}/history?limit=${limit}`),
+    getLocationHistory: (locationId: number, limit: number = 100): Promise<Transaction[]> =>
+      apiRequest(`/transactions/location/${locationId}/history?limit=${limit}`),
   },
 
   // System

@@ -5,14 +5,35 @@ import { Plus, Search, Loader2, AlertCircle, ArrowUp, ArrowDown, ArrowLeftRight,
 import { useTransactions } from '../../hooks/api/useTransactions';
 import { useProducts } from '../../hooks/api/useProducts';
 import { useLocations } from '../../hooks/api/useLocations';
+import TransactionForm from '../../components/forms/TransactionForm';
+import type {
+  TransactionCreate,
+  StockReceiptRequest,
+  StockShipmentRequest,
+  StockTransferRequest,
+  StockAdjustmentRequest
+} from '../../services/api';
 
 const Transactions: React.FC = () => {
-  const { transactions, loading, error, refetch } = useTransactions();
+  const {
+    transactions,
+    loading,
+    error,
+    refetch,
+    processReceipt,
+    processShipment,
+    processTransfer,
+    processAdjustment
+  } = useTransactions();
   const { products } = useProducts();
   const { locations } = useLocations();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedLocation, setSelectedLocation] = useState<string>('');
+
+  // Modal states
+  const [showTransactionForm, setShowTransactionForm] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
 
   // Create lookup maps
   const productMap = new Map(products.map(p => [p.id, p]));
@@ -76,7 +97,37 @@ const Transactions: React.FC = () => {
     }
   };
 
-  // Calculate stats  
+  // Handle transaction submission with type-specific routing
+  const handleTransactionSubmit = async (data: any, transactionType: string) => {
+    setFormLoading(true);
+    try {
+      switch (transactionType) {
+        case 'IN':
+          await processReceipt(data as StockReceiptRequest);
+          break;
+        case 'OUT':
+          await processShipment(data as StockShipmentRequest);
+          break;
+        case 'TRANSFER':
+          await processTransfer(data as StockTransferRequest);
+          break;
+        case 'ADJUSTMENT':
+          await processAdjustment(data as StockAdjustmentRequest);
+          break;
+        default:
+          console.error('Unknown transaction type:', transactionType);
+          return;
+      }
+      setShowTransactionForm(false);
+      refetch();
+    } catch (err) {
+      console.error('Failed to process transaction:', err);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  // Calculate stats
   const transactionStats = {
     total: transactions.length, // Note: This shows paginated count, not total DB count
     today: transactions.filter(t => 
@@ -113,7 +164,7 @@ const Transactions: React.FC = () => {
           <h1 className="text-3xl font-bold">Transactions</h1>
           <p className="text-muted-foreground">Track inventory movements and adjustments</p>
         </div>
-        <Button>
+        <Button onClick={() => setShowTransactionForm(true)}>
           <Plus className="w-4 h-4 mr-2" />
           New Transaction
         </Button>
@@ -257,7 +308,7 @@ const Transactions: React.FC = () => {
               }
             </div>
             {!searchTerm && !selectedType && !selectedLocation && (
-              <Button className="mt-4">
+              <Button className="mt-4" onClick={() => setShowTransactionForm(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Your First Transaction
               </Button>
@@ -347,6 +398,16 @@ const Transactions: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Transaction Form Modal */}
+      {showTransactionForm && (
+        <TransactionForm
+          title="New Transaction"
+          onSubmit={handleTransactionSubmit}
+          onCancel={() => setShowTransactionForm(false)}
+          isLoading={formLoading}
+        />
       )}
     </div>
   );
