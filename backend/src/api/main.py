@@ -97,29 +97,32 @@ async def health_check():
 @app.get("/api/v1/stats", summary="System statistics")
 async def system_stats():
     """Get overall system statistics."""
-    from ..data.database import get_session_sync
+    from ..data.database import get_session
     from ..services.inventory_service import InventoryService
     from ..services.supplier_service import SupplierService
     from ..services.location_service import LocationService
     from sqlmodel import select, func
     from ..data.models import Product, Transaction
-    
+
     try:
-        with get_session_sync() as session:
+        # Use proper session management with dependency injection pattern
+        session_gen = get_session()
+        session = next(session_gen)
+        try:
             # Get basic counts
             total_products = session.exec(select(func.count(Product.id))).first()
             active_products = session.exec(
                 select(func.count(Product.id)).where(Product.is_active == True)
             ).first()
             total_transactions = session.exec(select(func.count(Transaction.id))).first()
-            
+
             # Get service statistics
             supplier_service = SupplierService(session)
             location_service = LocationService(session)
-            
+
             supplier_stats = supplier_service.get_supplier_statistics()
             location_stats = location_service.get_location_statistics()
-            
+
             return {
                 "products": {
                     "total": total_products or 0,
@@ -136,9 +139,26 @@ async def system_stats():
                     "allow_negative_inventory": settings.allow_negative_inventory,
                 }
             }
+        finally:
+            # Ensure session is properly closed
+            try:
+                next(session_gen)
+            except StopIteration:
+                pass
     except Exception as e:
         logger.error(f"Error getting system stats: {e}")
         raise HTTPException(status_code=500, detail="Error retrieving system statistics")
+
+
+@app.get("/api/v1/system/pool-status", summary="Database connection pool status")
+async def get_pool_status():
+    """Get database connection pool status for monitoring."""
+    from ..data.database import get_connection_pool_status
+    try:
+        return get_connection_pool_status()
+    except Exception as e:
+        logger.error(f"Error getting pool status: {e}")
+        raise HTTPException(status_code=500, detail="Error retrieving pool status")
 
 
 if __name__ == "__main__":

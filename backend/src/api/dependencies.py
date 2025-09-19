@@ -14,9 +14,17 @@ from ..services.location_service import LocationService
 
 
 # Database dependency
-def get_db_session() -> Session:
-    """Get database session dependency."""
-    return next(get_session())
+def get_db_session():
+    """Get database session dependency with proper lifecycle management."""
+    session_generator = get_session()
+    session = next(session_generator)
+    try:
+        yield session
+    finally:
+        try:
+            next(session_generator)
+        except StopIteration:
+            pass  # Expected when generator is exhausted
 
 
 # Service dependencies

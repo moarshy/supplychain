@@ -13,12 +13,31 @@ from ..config import settings, get_database_url
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Create database engine
-engine = create_engine(
-    get_database_url(),
-    echo=settings.database_echo,
-    connect_args={"check_same_thread": False} if "sqlite" in get_database_url() else {}
-)
+# Create database engine with connection pool configuration
+engine_kwargs = {
+    "echo": settings.database_echo,
+    "pool_size": settings.database_pool_size,
+    "max_overflow": settings.database_max_overflow,
+    "pool_timeout": settings.database_pool_timeout,
+    "pool_recycle": settings.database_pool_recycle,
+    "pool_pre_ping": settings.database_pool_pre_ping,
+}
+
+# SQLite specific configuration
+if "sqlite" in get_database_url():
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+    # SQLite doesn't support connection pooling the same way, adjust settings
+    engine_kwargs["poolclass"] = None  # Use default SQLite pooling
+    engine_kwargs.pop("pool_size", None)
+    engine_kwargs.pop("max_overflow", None)
+    engine_kwargs.pop("pool_timeout", None)
+    logger.info("Using SQLite with simplified connection management")
+else:
+    logger.info(f"Configuring connection pool: size={settings.database_pool_size}, "
+                f"overflow={settings.database_max_overflow}, "
+                f"timeout={settings.database_pool_timeout}")
+
+engine = create_engine(get_database_url(), **engine_kwargs)
 
 
 @event.listens_for(Engine, "connect")
@@ -68,6 +87,23 @@ def check_database_health() -> bool:
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
         return False
+
+
+def get_connection_pool_status() -> dict:
+    """Get current connection pool status."""
+    try:
+        pool = engine.pool
+        return {
+            "pool_size": getattr(pool, 'size', lambda: 'N/A')(),
+            "checked_in": getattr(pool, 'checkedin', lambda: 'N/A')(),
+            "checked_out": getattr(pool, 'checkedout', lambda: 'N/A')(),
+            "overflow": getattr(pool, 'overflow', lambda: 'N/A')(),
+            "invalid": getattr(pool, 'invalid', lambda: 'N/A')(),
+            "status": "SQLite" if "sqlite" in get_database_url() else "PostgreSQL/MySQL"
+        }
+    except Exception as e:
+        logger.error(f"Error getting pool status: {e}")
+        return {"error": str(e)}
 
 
 # Initialize database on import

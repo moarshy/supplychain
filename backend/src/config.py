@@ -13,6 +13,13 @@ class Settings(BaseSettings):
     # Database Configuration
     database_url: str = "sqlite:///./data/inventory.db"
     database_echo: bool = False  # Set to True for SQL query logging
+
+    # Database Connection Pool Configuration
+    database_pool_size: int = 20  # Base connection pool size
+    database_max_overflow: int = 30  # Additional connections when pool is full
+    database_pool_timeout: int = 30  # Timeout for getting connection from pool
+    database_pool_recycle: int = 3600  # Recycle connections after 1 hour
+    database_pool_pre_ping: bool = True  # Validate connections before use
     
     # API Configuration
     api_host: str = "0.0.0.0"

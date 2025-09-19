@@ -115,13 +115,60 @@ class InventoryService:
         product = self.session.get(Product, product_id)
         if not product:
             return False
-        
+
         product.is_active = False
         product.updated_at = datetime.now(timezone.utc)
         self.session.add(product)
         self.session.commit()
-        
+
         logger.info(f"Deactivated product: {product.sku}")
+        return True
+
+    def delete_product_permanently(self, product_id: int) -> bool:
+        """Hard delete product (permanently remove from database)."""
+        product = self.session.get(Product, product_id)
+        if not product:
+            return False
+
+        # Check if product has any transactions or inventory records
+        from .transaction_service import TransactionService
+
+        transaction_service = TransactionService(self.session)
+        has_transactions = len(transaction_service.list_transactions(product_id=product_id)) > 0
+
+        inventory_items = self.session.exec(
+            select(Inventory).where(Inventory.product_id == product_id)
+        ).all()
+
+        # Check if there are any non-zero inventory quantities
+        has_meaningful_inventory = any(
+            item.quantity_on_hand > 0 or item.reserved_quantity > 0
+            for item in inventory_items
+        )
+
+        if has_transactions:
+            raise ValueError(
+                f"Cannot permanently delete product {product.sku}. "
+                "It has existing transaction history. "
+                "Use deactivate instead to preserve data integrity."
+            )
+
+        if has_meaningful_inventory:
+            raise ValueError(
+                f"Cannot permanently delete product {product.sku}. "
+                "It has existing inventory quantities. "
+                "Use deactivate instead to preserve data integrity."
+            )
+
+        # Delete empty inventory records first (auto-created records with zero quantities)
+        for item in inventory_items:
+            self.session.delete(item)
+
+        sku = product.sku
+        self.session.delete(product)
+        self.session.commit()
+
+        logger.warning(f"Permanently deleted product: {sku}")
         return True
     
     # Inventory operations

@@ -139,6 +139,26 @@ async def delete_product(
         raise handle_service_error(e, "product deletion")
 
 
+@router.delete("/{product_id}/permanent", summary="Delete product permanently")
+async def delete_product_permanently(
+    product_id: int = Path(..., description="Product ID"),
+    service: InventoryServiceDep = None
+):
+    """Permanently delete product (hard delete). Only allowed if no transactions or inventory exist."""
+    try:
+        success = service.delete_product_permanently(product_id)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Product with ID {product_id} not found")
+        return {"message": "Product permanently deleted", "product_id": product_id}
+    except HTTPException:
+        raise
+    except ValueError as e:
+        # Business rule violation (has transactions/inventory)
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise handle_service_error(e, "permanent product deletion")
+
+
 @router.get("/{product_id}/inventory", summary="Get product inventory")
 async def get_product_inventory(
     product_id: int = Path(..., description="Product ID"),
